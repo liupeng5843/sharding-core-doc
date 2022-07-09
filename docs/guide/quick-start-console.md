@@ -1,12 +1,9 @@
 ---
 icon: launch
-title: 快速上手控制台
+title: 快速上手控制台NetCore
 category: 使用指南
 ---
 
-
-## Demo
-本次demo源码：[EFCoreSharding](https://github.com/xuejmnet/ShardingCoreDocDemo/tree/main/EFCoreSharding)
 
 ## 快速开始
 5步实现按月分表,且支持自动化建表建库
@@ -16,7 +13,7 @@ category: 使用指南
 # 请对应安装您需要的版本
 PM> Install-Package ShardingCore
 # use sqlserver
-PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
+PM> Install-Package Pomelo.EntityFrameworkCore.MySql
 #  use mysql
 #PM> Install-Package Pomelo.EntityFrameworkCore.MySql
 # use other database driver,if efcore support
@@ -122,49 +119,84 @@ public class OrderVirtualTableRoute:AbstractSimpleShardingModKeyStringVirtualTab
   4. `AbstractSimpleShardingModKeyStringVirtualTableRoute<Order>`由sharding-core提供的默认取模分表规则,其中2代表分表后尾巴有两位,3表示按3取模所以后缀为:00,01,02。因为最多2位所以可以最多到99,如果需要了解更多路由[默认路由](/sharding-core-doc/pages/defaultroute)
 :::
 
+### 第五步配置今天ShardingCore
+创建dbcontext创建者 和静态ShardingRuntimeContext提供者
+```csharp
+public class ShardingProvider
+{
+    private static ILoggerFactory efLogger = LoggerFactory.Create(builder =>
+    {
+        builder.AddFilter((category, level) => category == DbLoggerCategory.Database.Command.Name && level == LogLevel.Information).AddConsole();
+    });
+    private static readonly IShardingRuntimeContext instance;
+    public static IShardingRuntimeContext ShardingRuntimeContext => instance;
+    static ShardingProvider()
+    {
+        instance=new ShardingRuntimeBuilder<MyDbContext>().UseRouteConfig(op =>
+            {
+                op.AddShardingTableRoute<OrderVirtualTableRoute>();
+            })
+            .UseConfig((sp,op) =>
+            {
+                op.UseShardingQuery((con, b) =>
+                {
+                    b.UseMySql(con, new MySqlServerVersion(new Version()))
+                        .UseLoggerFactory(efLogger);
+                });
+                op.UseShardingTransaction((con, b) =>
+                {
+                    b.UseMySql(con, new MySqlServerVersion(new Version()))
+                        .UseLoggerFactory(efLogger);
+                });
+                op.AddDefaultDataSource("ds0", "server=127.0.0.1;port=3306;database=console0;userid=root;password=root;");
+            }).ReplaceService<IDbContextCreator, MyDbContextCreator>(ServiceLifetime.Singleton).Build();
+    }
+}
 
-### 第五步配置启动项
-无论你是何种数据库只需要修改`AddDefaultDataSource`里面的链接字符串 请不要修改委托内部的UseXXX参数 `conStr` and `connection`
+
+public class MyDbContextCreator:ActivatorDbContextCreator<MyDbContext>
+{
+    public override DbContext GetShellDbContext(IShardingProvider shardingProvider)
+    {
+        var dbContextOptionsBuilder = new DbContextOptionsBuilder<MyDbContext>();
+        dbContextOptionsBuilder.UseDefaultSharding<MyDbContext>(ShardingProvider.ShardingRuntimeContext);
+        return new MyDbContext(dbContextOptionsBuilder.Options);
+    }
+}
+```
+
+### 第六步启动并使用
+当然如果你使用new ServiceCollection()来创建的依赖注入那么使用起来和AspNetCore的方式一样
 ```csharp
 
-        public void ConfigureServices(IServiceCollection services)
-        {
+using Microsoft.EntityFrameworkCore;
+using Sample.ShardingConsole;
+using ShardingCore;
+using ShardingCore.Extensions;
 
-            //添加分片配置
-            services.AddShardingDbContext<MyDbContext>()
-                .AddEntityConfig(op =>
-                {
-                    op.CreateShardingTableOnStart = true;
-                    op.EnsureCreatedWithOutShardingTable = true;
-                    op.UseShardingQuery((conn, builder) =>
-                    {
-                        builder.UseSqlServer(conn);
-                    });
-                    op.UseShardingTransaction((conn, builder) =>
-                    {
-                        builder.UseSqlServer(conn);
-                    });
-                    op.AddShardingTableRoute<OrderVirtualTableRoute>();
-                }).AddConfig(op =>
-                {
-                    op.ConfigId = "c1";
-                    op.AddDefaultDataSource(Guid.NewGuid().ToString("n"),
-                        "Data Source=localhost;Initial Catalog=EFCoreShardingTableDB;Integrated Security=True;");
-                }).EnsureConfig();
-        }
+ShardingProvider.ShardingRuntimeContext.UseAutoShardingCreate();
+ShardingProvider.ShardingRuntimeContext.UseAutoTryCompensateTable();
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-        {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
-            // it's importment don't forget it
-            app.ApplicationServices.GetRequiredService<IShardingBootstrapper>().Start();
-            // other configure....
-        }
+var dbContextOptionsBuilder = new DbContextOptionsBuilder<MyDbContext>();
+dbContextOptionsBuilder.UseDefaultSharding<MyDbContext>(ShardingProvider.ShardingRuntimeContext);
+using (var dbcontext = new MyDbContext(dbContextOptionsBuilder.Options))
+{
+    dbcontext.Add(new Order()
+    {
+        Id = Guid.NewGuid().ToString("n"),
+        Payer = "111",
+        Area = "123",
+        OrderStatus = OrderStatusEnum.Payed,
+        Money = 100,
+        CreationTime = DateTime.Now
+    });
+    dbcontext.SaveChanges();
+}
+
+Console.WriteLine("Hello, World!");
+
 ```
-这样所有的配置就完成了你可以愉快地对Order表进行按月分表了
+这样所有的配置就完成了你可以愉快地对Order表进行取模分表了
 
 ```csharp
 [Route("api/[controller]")]
@@ -185,8 +217,17 @@ public class ValuesController : Controller
         }
 }
 ```
+
+```shell
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (12ms) [Parameters=[@p0='?' (Size = 50), @p1='?' (Size = 50), @p2='?' (DbType = DateTime), @p3='?' (DbType = Int64), @p4='?' (DbType = Int32), @p5='?' (Size = 50)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO `Order_02` (`Id`, `Area`, `CreationTime`, `Money`, `OrderStatus`, `Payer`)
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5);
+Hello, World!
+
+```
 ::: tip 提示
-  1. 如果程序无法启动请确保一下几点，确认是否已经注入原生的efcore的DbContext,并且在原生的后续对DbContextOptions进行了`UseSharding<MyDbContext>()`配置
+  1. 如果程序无法启动请确保一下几点，确认是否已经注入原生的efcore的DbContext,并且在原生的后续对DbContextOptions进行了`UseDefaultSharding<MyDbContext>()`配置
   2. 目前`ShardingCore`提供了三种配置方式
   - 1.默认配置
   ```csharp
@@ -196,7 +237,7 @@ public class ValuesController : Controller
   - 2.额外配置
   ```csharp
     //原来的dbcontext配置
-    services.AddDbContext<MyDbContext>(DIExtension.UseDefaultSharding<MyDbContext>);
+    services.AddDbContext<MyDbContext>(ShardingCoreExtension.UseDefaultSharding<MyDbContext>);
     //额外添加分片配置
     services.AddShardingConfigure<MyDbContext>()
   ```
@@ -209,5 +250,4 @@ public class ValuesController : Controller
   ```
   3. default data source 的连接字符串是否和默认dbcontext创建的一致
   4. 是否添加了分表路由`op.AddShardingTableRoute<OrderVirtualTableRoute>();`
-  5. 是否启动了分表启动器`buildServiceProvider.GetRequiredService<IShardingBootstrapper>().Start();`
 :::

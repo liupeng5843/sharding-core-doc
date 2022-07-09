@@ -69,11 +69,12 @@ module.exports = config({
         "important",
         "guide-upgrade-3-4",
         "guide-upgrade-5-6",
+        "old-integration",
         {
           title: "指南",
           icon: "creative",
           prefix: "guide/",
-          children: ["introduce","terminology","quick-start-aspnetcore","params-confg"],
+          children: ["introduce","terminology","quick-start-aspnetcore","quick-start-console","params-confg"],
         },
         {
           title: "分表",

@@ -4,10 +4,6 @@ title: 快速上手AspNetCore
 category: 使用指南
 ---
 
-
-## Demo
-本次demo源码：[EFCoreSharding](https://github.com/xuejmnet/ShardingCoreDocDemo/tree/main/EFCoreSharding)
-
 ## 快速开始
 5步实现按月分表,且支持自动化建表建库
 ### 第一步安装依赖
@@ -135,7 +131,7 @@ public class OrderVirtualTableRoute:AbstractSimpleShardingModKeyStringVirtualTab
                 .UseRouteConfig(op =>
                 {
                     op.AddShardingTableRoute<OrderVirtualTableRoute>();
-                }).AddConfig((sp,op) =>
+                }).UseConfig((sp,op) =>
                 {
                     
                     op.UseShardingQuery((conn, builder) =>
@@ -165,7 +161,7 @@ public class OrderVirtualTableRoute:AbstractSimpleShardingModKeyStringVirtualTab
             // other configure....
         }
 ```
-这样所有的配置就完成了你可以愉快地对Order表进行按月分表了
+这样所有的配置就完成了你可以愉快地对Order表进行取模分表了
 
 ```csharp
 [Route("api/[controller]")]
@@ -187,7 +183,7 @@ public class ValuesController : Controller
 }
 ```
 ::: tip 提示
-  1. 如果程序无法启动请确保一下几点，确认是否已经注入原生的efcore的DbContext,并且在原生的后续对DbContextOptions进行了`UseSharding<MyDbContext>()`配置
+  1. 如果程序无法启动请确保一下几点，确认是否已经注入原生的efcore的DbContext,并且在原生的后续对DbContextOptions进行了`UseDefaultSharding<MyDbContext>()`配置
   2. 目前`ShardingCore`提供了三种配置方式
   - 1.默认配置
   ```csharp

@@ -7,11 +7,11 @@ category: 重要
 
 
 ::: danger
-！！！升级如果不使用`app.ApplictaionServices.UseAutoShardingCreate()`将不会自动创建表任务请注意
+！！！升级如果不使用`app.ApplictaionServices.UseAutoShardingCreate()`将不会自动创建表任务请注意,如果您是IIS代理那么请关闭应用程序池的固定回收和空闲回收设置为0,不然ShardingCore的创建表的任务可能不会生效
 
-！！！升级如果不使用`app.ApplictaionServices.UseAutoShardingCreate()`将不会自动创建表任务请注意
+！！！升级如果不使用`app.ApplictaionServices.UseAutoShardingCreate()`将不会自动创建表任务请注意,如果您是IIS代理那么请关闭应用程序池的固定回收和空闲回收设置为0,不然ShardingCore的创建表的任务可能不会生效
 
-！！！升级如果不使用`app.ApplictaionServices.UseAutoShardingCreate()`将不会自动创建表任务请注意
+！！！升级如果不使用`app.ApplictaionServices.UseAutoShardingCreate()`将不会自动创建表任务请注意,如果您是IIS代理那么请关闭应用程序池的固定回收和空闲回收设置为0,不然ShardingCore的创建表的任务可能不会生效
 :::
 
 ## 前言
