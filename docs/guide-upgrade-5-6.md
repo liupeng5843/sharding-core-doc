@@ -159,6 +159,12 @@ x.6.x.x+
                         { "C", "Data Source=localhost;Initial Catalog=ShardingCoreDBC;Integrated Security=True;" },
                     };
                     });
+
+                    //如果需要迁移code-first必须要自行处理
+                    o.UseShardingMigrationConfigure(b =>
+                    {
+                        b.ReplaceService<IMigrationsSqlGenerator, ShardingSqlServerMigrationsSqlGenerator>();
+                    });
                     //添加读写分离
                     op.AddReadWriteSeparation(sp =>
                     {
