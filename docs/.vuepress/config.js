@@ -74,7 +74,7 @@ module.exports = config({
           title: "指南",
           icon: "creative",
           prefix: "guide/",
-          children: ["introduce","terminology","quick-start-aspnetcore","quick-start-console","params-confg"],
+          children: ["introduce","terminology","quick-start-aspnetcore","quick-start-console","start-analysis","params-confg"],
         },
         {
           title: "分表",

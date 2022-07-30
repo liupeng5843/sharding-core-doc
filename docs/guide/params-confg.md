@@ -6,116 +6,64 @@ category: 使用指南
 
 ## 配置
 ```csharp
- services.AddShardingDbContext<MyDbContext>().AddEntityConfig(op =>
-            {
-                //如果您使用code-first建议选择false
-                op.CreateShardingTableOnStart = true;
-                //如果您使用code-first建议修改为fsle
-                op.EnsureCreatedWithOutShardingTable = true;
-                //当无法获取路由时会返回默认值而不是报错
-                op.ThrowIfQueryRouteNotMatch = false;
-                //如果创建表出错的话是否忽略,如果不忽略就会输出warning的日志
-                op.IgnoreCreateTableError = true;
-                //是否缓存分库路由表达式缓存仅缓存单个操作
-                //sharding data source route filter expression compile cache
-                op.EnableDataSourceRouteCompileCache = null;
-                //是否缓存分表路由表达式缓存仅缓存单个操作
-                //sharding table route filter expression compile cache
-                op.EnableTableRouteCompileCache = null;
-                //如果找不到路由结果是否抛出异常还是选择返回默认值
-                op.ThrowIfQueryRouteNotMatch = false;
-                //添加这个对象的字符串创建dbcontext 优先级低 优先采用AddConfig下的
-                op.UseShardingQuery((conStr, builder) =>
+ 
+            services.AddShardingDbContext<OtherDbContext>()
+                .UseRouteConfig(op => { op.AddShardingTableRoute<MyUserRoute>(); })
+                .UseConfig(o =>
                 {
-                    builder.UseSqlServer(conStr).UseLoggerFactory(efLogger);
-                });
-                //添加这个对象的链接创建dbcontext 优先级低 优先采用AddConfig下的
-                op.UseShardingTransaction((connection, builder) =>
-                {
-                    builder.UseSqlServer(connection).UseLoggerFactory(efLogger);
-                });
-                //添加分库路由
-                op.AddShardingDataSourceRoute<xxx>();
-                //添加分表路由
-                op.AddShardingTableRoute<xxx>();
-            }).AddConfig(op =>//AddConfig必须存在一个
-            {
-                //当前配置的名称
-                op.ConfigId = "a";
-                //当前配置优先级
-                op.Priority = 1;
-                //当前配置链接模式
-                op.ConnectionMode = ConnectionModeEnum.SYSTEM_AUTO;
-                //当前配置最大连接数
-                op.MaxQueryConnectionsLimit = 4;
-                //同上配置
-                op.UseShardingQuery((conStr, builder) =>
-                {
-                    builder.UseSqlServer(conStr).UseLoggerFactory(efLogger);
-                });
-                //同上配置
-                op.UseShardingTransaction((connection, builder) =>
-                {
-                    builder.UseSqlServer(connection).UseLoggerFactory(efLogger);
-                });
-                //添加默认链接
-                op.AddDefaultDataSource("ds0",
-                    "Data Source=localhost;Initial Catalog=xxxx;Integrated Security=True;");
-                //添加额外数据源链接(分库下会用到)
-                op.AddExtraDataSource(sp =>
-                {
-                    return new Dictionary<string, string>()
+                    //当查询无法匹配到对应的路由是否抛出异常 true表示抛出异常 false表示返回默认值
+                    o.ThrowIfQueryRouteNotMatch = false;
+                    //如果开启读写分离是否在savechange commit rollback后自动将dbcontext切换为写库 true表示是 false表示不是
+                    o.AutoUseWriteConnectionStringAfterWriteDb = false;
+                    //创建表如果出现错误是否忽略掉错误不进行日志出输出 true表示忽略 false表示不忽略
+                    o.IgnoreCreateTableError = false;
+                    //默认的系统默认迁移并发数,分库下会进行并发迁移
+                    o.MigrationParallelCount = Environment.ProcessorCount;
+                    //补偿表并发线程数 补偿表用来进行最后一次补偿缺少的分片表
+                    o.CompensateTableParallelCount = Environment.ProcessorCount;
+                    //默认最大连接数限制 如果出现跨分片查询需要开启n个链接，设置这个值会将x个链接分成每n个为一组进行同库串行执行
+                    o.MaxQueryConnectionsLimit = Environment.ProcessorCount;
+                    //链接模式的选择系统自动
+                    o.ConnectionMode = ConnectionModeEnum.SYSTEM_AUTO;
+                    o.UseShardingQuery((conStr, builder) =>
                     {
-                        { "ds1", "Data Source=localhost;Initial Catalog=xxxx1;Integrated Security=True;" },
-                        { "ds2", "Data Source=localhost;Initial Catalog=xxxx2;Integrated Security=True;" },
-                    };
-                });
-                //添加默认的比较器(guid在sqlserver下和c#下比较器排序行为不一致需要手动修复)
-                op.ReplaceShardingComparer(sp=>new CSharpLanguageShardingComparer());
-                //添加表确认默认提供了sqlserver和mysql的如果有其他的请提交pr补充谢谢
-                op.ReplaceTableEnsureManager(sp=>new SqlServerTableEnsureManager<MyDbContext>());
-                //添加读写分离
-                op.AddReadWriteSeparation(sp =>
-                {
-                    return new Dictionary<string, IEnumerable<string>>()
+                        builder.UseMySql(conStr, new MySqlServerVersion(new Version()))
+                            .UseLoggerFactory(efLogger)
+                            .EnableSensitiveDataLogging()
+                            .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+                    });
+                    o.UseShardingTransaction((connection, builder) =>
                     {
-                        {
-                            "ds0", new List<string>()
-                            {
-                                "Data Source=localhost;Initial Catalog=xxxx0_1;Integrated Security=True;"
-                            }
-                        }
-                    };
-                }, ReadStrategyEnum.Loop, defaultEnable: true);
-            }).EnsureConfig(ShardingConfigurationStrategyEnum.ThrowIfNull);//单个配置后续不会增加了的 如果无法匹配会抛出异常
-            //.EnsureMultiConfig(ShardingConfigurationStrategyEnum.ThrowIfNull)//多个配置后续还会增加,使用时必须指定configId 如果无法匹配会抛出异常 还可以指定返回优先级最高的或者返回null 但是返回null的情况下sharding-core将无法正常运行
+                        builder
+                            .UseMySql(connection, new MySqlServerVersion(new Version()))
+                            .UseLoggerFactory(efLogger)
+                            .EnableSensitiveDataLogging()
+                            .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+                    });
+                    o.UseShardingMigrationConfigure(b =>
+                    {
+                        b.ReplaceService<IMigrationsSqlGenerator, ShardingMySqlMigrationsSqlGenerator>();
+                    });
+                    o.AddDefaultDataSource("ds0",
+                        "server=127.0.0.1;port=3306;database=dbdbdx;userid=root;password=root;");
+                    o.AddExtraDataSource(sp => new Dictionary<string, string>()
+                    {
+                        { "ds1", "server=127.0.0.1;port=3306;database=dbdbd1;userid=root;password=root;" },
+                        { "ds2", "server=127.0.0.1;port=3306;database=dbdbd2;userid=root;password=root;" }
+                    });
+                    o.AddReadWriteSeparation(sp=>new Dictionary<string, IEnumerable<string>>()
+                    {
+                        {"ds0",new []{"server=127.0.0.1;port=3306;database=dbdbdx;userid=root;password=root;"}}
+                    },ReadStrategyEnum.Loop,false,10,ReadConnStringGetStrategyEnum.LatestFirstTime);
+                })
+                .ReplaceService<ITableEnsureManager, MySqlTableEnsureManager>()
+                .AddShardingCore();
 ```
 
-## EnableTableRouteCompileCache
-针对分表下的表达式编译,默认null
-针对单个结果的表达式进行编译缓存可以有效的提高性能
 
-## EnableDataSourceRouteCompileCache
-针对分库下的表达式编译,默认null
-针对单个结果的表达式进行编译缓存可以有效的提高性能
+## ThrowIfQueryRouteNotMatch
 
-## EnsureCreatedWithOutShardingTable
-
-这个属性的意思很好理解就是是否需要在启动的时候创建表，这边的创建表是除了分表的对象，其他对象都会直接创建对应的表，只有当数据库是空的前提下或者没有数据库的前提下会自动创建数据库和普通表，如果您是使用[code-first](/sharding-core-doc/adv/code-first/)的那么这个值可以无视或者设置为false。
-
-有库了不会建库，普通表(非分表的可以是分库的表但不能是分表的表)有任何一张存在库里了别的普通表都不会被创建
-
-::: warning 注意
-!!!**只有**当数据库是空的前提下或者没有数据库的前提下会自动创建数据库和普通表!!!
-
-!!!**只有**当数据库是空的前提下或者没有数据库的前提下会自动创建数据库和普通表!!!
-
-!!!**只有**当数据库是空的前提下或者没有数据库的前提下会自动创建数据库和普通表!!!
-:::
-
-## CreateShardingTableOnStart
-
-这个属性的意思就是是否需要在启动的时候创建分表了的表，但是由于`efcore`并未提供关于表是否存在的判断，所以如果你将这个值设置为true,那么每次都会在启动的时候都会去执行创建表的方法，这样就会导致启动的时候如果有某些表过多那么就会导致启动速度变慢，可以再您未创建表的时候使用这个属性，创建完成后将这个属性设置为false，如果您是使用[code-first](/sharding-core-doc/adv/code-first/)的那么这个值可以无视或者设置为false。
+`sharding-core`默认会在查询无法匹配到对应的路由是否抛出异常 true表示抛出异常 false表示返回默认值。
 
 ## IgnoreCreateTableError
 
@@ -151,23 +99,3 @@ CONNECTION_STRICTLY的意思是最小化连接并发数，就是单次查询并�
 !!!如果用户手动设置ConnectionMode则按照用户设置的为准,之后判断本次查询skip是否大于UseMemoryLimitWhileSkip,如果是采用`MEMORY_STRICTLY`,之后才是系统动态设置根据`MaxQueryConnectionsLimit`来分配!!!
 !!!如果用户手动设置ConnectionMode则按照用户设置的为准,之后判断本次查询skip是否大于UseMemoryLimitWhileSkip,如果是采用`MEMORY_STRICTLY`,之后才是系统动态设置根据`MaxQueryConnectionsLimit`来分配!!!
 :::
-
-## ReplaceShardingComparer
-添加默认的比较器(guid在sqlserver下和c#下比较器排序行为不一致需要手动修复)
-
-## ReplaceTableEnsureManager
-添加表确认默认提供了sqlserver和mysql的如果有其他的请提交pr补充谢谢
-
-## ShardingConfigurationStrategyEnum
-
-### ThrowIfNull
-如果找到将抛出异常,单配置下无需管理(推荐、默认也是这个值)
-
-### ReturnNull
-如果找不到就返回null,如果返回null那么dbcontext将无法正常运行,所以如果设置返回null请一定要在创建dbcontext之前指定configId
-
-### ReturnHighPriority
-当不指定或者找不到对应的当前虚拟数据源或者configId时将返回优先级最高的那个
-
-## AddConfig
-支持添加多个配置,每个配置可以指定自定义数据库,并且支持动态添加
