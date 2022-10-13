@@ -29,7 +29,7 @@ category: 重要
 因为当前架构师在当前dbcontext作为壳运行,crud会创建真实的dbcontext依托在当前dbcontext上,所以当前dbcontext目前crud都是可以的没有问题,但是如果遇到需要获取track或者其他的一些处理就不应该在当前dbcontext上处理,应该通过内部的DbContextExecutor来获取内部的DbContext来进行处理
 
 ## DbContext构造函数问题
-请不要再DbContext构造函数内部调用会让model提前确定的方法比如
+请不要在DbContext构造函数内部调用会让model提前确定的方法比如
 ```c#
         public DefaultShardingDbContext(DbContextOptions<DefaultShardingDbContext> options) : base(options)
         {
