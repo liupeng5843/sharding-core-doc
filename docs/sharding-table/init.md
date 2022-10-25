@@ -187,7 +187,6 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
                         }
                     };
                 }, ReadStrategyEnum.Loop, defaultEnable: true);
-                op.ReplaceTableEnsureManager(sp=>new SqlServerTableEnsureManager<MyDbContext>());
             }).EnsureConfig();
         }
 ```

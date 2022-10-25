@@ -154,8 +154,6 @@ public class OrderVirtualTableRoute:AbstractSimpleShardingModKeyStringVirtualTab
                 app.UseDeveloperExceptionPage();
             }
             
-            //not required, enable job auto create table 非必须 启用自动创建表的任务 
-            app.ApplicationServices.UseAutoShardingCreate();
             //not required, enable check table missing and auto create,非必须  启动检查缺少的表并且创建
             app.ApplicationServices.UseAutoTryCompensateTable();
             // other configure....
