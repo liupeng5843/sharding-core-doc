@@ -150,21 +150,16 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
         {
 
             services.AddControllers();
-            //添加一下代码
-            services.AddShardingDbContext<MyDbContext>().AddEntityConfig(op =>
+            
+             services.AddShardingDbContext<MyDbContext>().UseRouteConfig(op =>
             {
-                //如果您使用code-first建议选择false
-                op.CreateShardingTableOnStart = true;
-                //如果您使用code-first建议修改为fsle
-                op.EnsureCreatedWithOutShardingTable = true;
-                //当无法获取路由时会返回默认值而不是报错
-                op.ThrowIfQueryRouteNotMatch = false;
                 op.AddShardingTableRoute<SysUserVirtualTableRoute>();
                 op.AddShardingTableRoute<OrderVirtualTableRoute>();
                 op.AddShardingTableRoute<MultiShardingOrderVirtualTableRoute>();
-            }).AddConfig(op =>
+            }).UseConfig(op =>
             {
-                op.ConfigId = "a";
+                //当无法获取路由时会返回默认值而不是报错
+                op.ThrowIfQueryRouteNotMatch = false;
                 op.UseShardingQuery((conStr, builder) =>
                 {
                     builder.UseSqlServer(conStr).UseLoggerFactory(efLogger);
@@ -187,7 +182,7 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
                         }
                     };
                 }, ReadStrategyEnum.Loop, defaultEnable: true);
-            }).EnsureConfig();
+            }).AddShardingCore();
         }
 ```
 ::: danger 重要
@@ -275,8 +270,17 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
             {
                 app.UseDeveloperExceptionPage();
             }
-            //初始化ShardingCore
-            app.UseShardingCore();
+
+            using (var scope = app.ApplicationServices.CreateScope())
+            {
+                var myDbContext = scope.ServiceProvider.GetService<MyDbContext>();
+                //如果没有迁移那么就直接创建表和库
+                myDbContext.Database.EnsureCreated();
+                //如果有迁移使用下面的
+                // myDbContext.Database.Migrate();
+            }
+            app.ApplicationServices.UseAutoTryCompensateTable();
+            // app.UseShardingCore();
             app.UseRouting();
 
             app.UseAuthorization();
@@ -285,7 +289,6 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
             {
                 endpoints.MapControllers();
             });
-            //初始化种子数据
             app.InitSeed();
         }
 ```
