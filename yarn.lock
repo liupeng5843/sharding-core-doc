@@ -8976,7 +8976,7 @@ vuepress-theme-hope@^1.20.5:
     vuepress-plugin-photo-swipe "1.20.4"
     vuepress-plugin-typescript "^0.3.1"
 
-vuepress@^1.9.7:
+vuepress@^1.8.2:
   version "1.9.7"
   resolved "https://registry.yarnpkg.com/vuepress/-/vuepress-1.9.7.tgz#2cd6709a2228f5cef588115aaeabf820ab9ed7cc"
   integrity sha512-aSXpoJBGhgjaWUsT1Zs/ZO8JdDWWsxZRlVme/E7QYpn+ZB9iunSgPMozJQNFaHzcRq4kPx5A4k9UhzLRcvtdMg==
