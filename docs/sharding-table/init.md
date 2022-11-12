@@ -271,6 +271,7 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
                 app.UseDeveloperExceptionPage();
             }
 
+            //建议补偿表在迁移后面
             using (var scope = app.ApplicationServices.CreateScope())
             {
                 var myDbContext = scope.ServiceProvider.GetService<MyDbContext>();

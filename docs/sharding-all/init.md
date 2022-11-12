@@ -133,7 +133,7 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
             return true;
         }
 
-        protected override Expression<Func<string, bool>> GetRouteToFilter(string shardingKey, ShardingOperatorEnum shardingOperator)
+        protected override Func<string, bool> GetRouteToFilter(string shardingKey, ShardingOperatorEnum shardingOperator)
         {
 
             var t = ShardingKeyToDataSourceName(shardingKey);
@@ -195,7 +195,7 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
             return true;
         }
 
-        protected override Expression<Func<string, bool>> GetRouteToFilter(string shardingKey, ShardingOperatorEnum shardingOperator)
+        protected override Func<string, bool> GetRouteToFilter(string shardingKey, ShardingOperatorEnum shardingOperator)
         {
 
             var t = ShardingKeyToDataSourceName(shardingKey);
@@ -241,18 +241,15 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
             services.AddControllers();
             
             services.AddShardingDbContext<MyDbContext>()
-                .AddEntityConfig(o =>
+                .UseRouteConfig(o =>
                 {
-                    o.CreateShardingTableOnStart = true;
-                    o.EnsureCreatedWithOutShardingTable = true;
                     o.AddShardingDataSourceRoute<OrderVirtualDataSourceRoute>();
                     o.AddShardingDataSourceRoute<SysUserVirtualDataSourceRoute>();
                     o.AddShardingTableRoute<SysUserVirtualTableRoute>();
                     o.AddShardingTableRoute<OrderVirtualTableRoute>();
                 })
-                .AddConfig(op =>
+                .UseConfig(op =>
                 {
-                    op.ConfigId = "c1";
                     op.UseShardingQuery((conStr, builder) =>
                     {
                         builder.UseSqlServer(conStr).UseLoggerFactory(efLogger);
@@ -261,7 +258,6 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
                     {
                         builder.UseSqlServer(connection).UseLoggerFactory(efLogger);
                     });
-                    op.ReplaceTableEnsureManager(sp => new SqlServerTableEnsureManager<MyDbContext>());
                     op.AddDefaultDataSource("A",
                      "Data Source=localhost;Initial Catalog=EFCoreShardingDataSourceTableDBA;Integrated Security=True;");
                     op.AddExtraDataSource(sp =>
@@ -276,7 +272,7 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
                         },
                     };
                     });
-                }).EnsureConfig();
+                }).AddShardingCore();
         }
 ```
 ::: danger 重要

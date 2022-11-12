@@ -129,7 +129,7 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
              return true;
         }
 
-        protected override Expression<Func<string, bool>> GetRouteToFilter(string shardingKey, ShardingOperatorEnum shardingOperator)
+        protected override Func<string, bool> GetRouteToFilter(string shardingKey, ShardingOperatorEnum shardingOperator)
         {
 
             var t = ShardingKeyToDataSourceName(shardingKey);
@@ -176,7 +176,7 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
             return true;
         }
 
-        protected override Expression<Func<string, bool>> GetRouteToFilter(string shardingKey, ShardingOperatorEnum shardingOperator)
+        protected override Func<string, bool> GetRouteToFilter(string shardingKey, ShardingOperatorEnum shardingOperator)
         {
 
             var t = ShardingKeyToDataSourceName(shardingKey);
@@ -209,14 +209,14 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
             services.AddControllers();
             
                 services.AddShardingDbContext<MyDbContext>()
-                .AddEntityConfig(o =>
+                .UseRouteConfig(o =>
                 {
                     o.CreateShardingTableOnStart = true;
                     o.EnsureCreatedWithOutShardingTable = true;
                     o.AddShardingDataSourceRoute<OrderVirtualDataSourceRoute>();
                     o.AddShardingDataSourceRoute<SysUserVirtualDataSourceRoute>();
                 })
-                .AddConfig(op =>
+                .UseConfig(op =>
                 {
                     op.ConfigId = "c1";
                     op.UseShardingQuery((conStr, builder) =>
@@ -244,7 +244,7 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
                             },
                         };
                     });
-                }).EnsureConfig();
+                }).AddShardingCore();
         }
 ```
 ::: danger 重要
@@ -261,10 +261,6 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
    
     public static class StartupExtension
     {
-        public static void UseShardingCore(this IApplicationBuilder app)
-        {
-            app.ApplicationServices.GetRequiredService<IShardingBootstrapper>().Start();
-        }
         public static void InitSeed(this IApplicationBuilder app)
         {
             using (var serviceScope = app.ApplicationServices.CreateScope())
@@ -317,8 +313,16 @@ PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer
             {
                 app.UseDeveloperExceptionPage();
             }
-            //初始化ShardingCore
-            app.UseShardingCore();
+            //建议补偿表在迁移后面
+            using (var scope = app.ApplicationServices.CreateScope())
+            {
+                var myDbContext = scope.ServiceProvider.GetService<MyDbContext>();
+                //如果没有迁移那么就直接创建表和库
+                myDbContext.Database.EnsureCreated();
+                //如果有迁移使用下面的
+                // myDbContext.Database.Migrate();
+            }
+            app.ApplicationServices.UseAutoTryCompensateTable();
             app.UseRouting();
 
             app.UseAuthorization();
