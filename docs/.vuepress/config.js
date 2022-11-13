@@ -104,7 +104,7 @@ module.exports = config({
           title: "路由",
           icon: "creative",
           prefix: "sharding-route/",
-          children: ["default-route","customer-route","extension-hash-route","auto-create-route","manual-route"],
+          children: ["default-route","customer-route","extension-hash-route","auto-create-route","more-route","manual-route"],
         },
         {
           title: "查询",

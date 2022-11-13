@@ -10,7 +10,7 @@ category: 高级
 本项目[demo示例](https://github.com/xuejmnet/sharding-core/tree/main/samples/Sample.Migrations)
 
 ## 安装
-首先无论你是aspnetcore还是普通的控制台程序，我们这边需要做的是新建一个控制台程序，命名为`Project.Migrations`,如果您是分层架构，那么请对当前的控制台程序进行`efcore`所在层的类库进行引用。引用的类库如果不存在`sharding-core`也请安装上。最后安装`Microsoft.EntityFrameworkCore.Tools`请选择对应的`efcore`对应版本
+首先无论你是aspnetcore还是普通的控制台程序，我们这边需要做的是新建一个控制台程序，命名为`Project.Migrations`,如果您是分层架构，那安装`Microsoft.EntityFrameworkCore.Tools`请选择对应的`efcore`对应版本
 
 ```shell
 dotnet add package Microsoft.EntityFrameworkCore.Tools
@@ -89,8 +89,6 @@ dotnet add package Microsoft.EntityFrameworkCore.Tools
     }
 ```
 ### 创建dbcontext
-如果是项目引入efcore层可以忽略
-
 创建dbcontext并且建立关系
 ```csharp
 
@@ -145,94 +143,78 @@ dotnet add package Microsoft.EntityFrameworkCore.Tools
 
 我们需要对迁移sql生成进行重写,假如我们是`SqlServer`,`MySql`亦是如此
 
+`Oracle`比较特殊可以看源码`Sample.OracleIssue`
+
 ```csharp
 
-    public class ShardingSqlServerMigrationsSqlGenerator<TShardingDbContext> : SqlServerMigrationsSqlGenerator where TShardingDbContext:DbContext,IShardingDbContext
+    public class ShardingSqlServerMigrationsSqlGenerator: SqlServerMigrationsSqlGenerator where TShardingDbContext:DbContext,IShardingDbContext
     {
-        public ShardingSqlServerMigrationsSqlGenerator(MigrationsSqlGeneratorDependencies dependencies, IRelationalAnnotationProvider migrationsAnnotations) : base(dependencies, migrationsAnnotations)
+        private readonly IShardingRuntimeContext _shardingRuntimeContext;
+
+        public ShardingSqlServerMigrationsSqlGenerator(IShardingRuntimeContext shardingRuntimeContext,MigrationsSqlGeneratorDependencies dependencies, ICommandBatchPreparer commandBatchPreparer) : base(dependencies, commandBatchPreparer)
         {
+            _shardingRuntimeContext = shardingRuntimeContext;
         }
         protected override void Generate(
             MigrationOperation operation,
             IModel model,
             MigrationCommandListBuilder builder)
         {
-            //获取老旧命令
             var oldCmds = builder.GetCommandList().ToList();
             base.Generate(operation, model, builder);
-            //获取新的命令
             var newCmds = builder.GetCommandList().ToList();
-            //比较判断获取增量命令
             var addCmds = newCmds.Where(x => !oldCmds.Contains(x)).ToList();
-            //替换增量命令下的表名为表名+后缀
-            MigrationHelper.Generate<TShardingDbContext>(operation, builder, Dependencies.SqlGenerationHelper, addCmds);
+
+            MigrationHelper.Generate(_shardingRuntimeContext, operation, builder, Dependencies.SqlGenerationHelper, addCmds);
         }
     }
 ```
-
-
-### 创建设计
-创建ShardingDesignTimeDbContextFactory来继承`IDesignTimeDbContextFactory<TDbContext>`
 ```csharp
-
-    public class DefaultDesignTimeDbContextFactory: IDesignTimeDbContextFactory<DefaultShardingTableDbContext>
-    { 
-        static DefaultDesignTimeDbContextFactory()
-        {
-            var services = new ServiceCollection();
-    
-            services.AddShardingDbContext<DefaultShardingTableDbContext>()
-            .AddEntityConfig(o =>
-            {
-                o.CreateShardingTableOnStart = false;
-                o.CreateDataBaseOnlyOnStart = true;
-                o.EnsureCreatedWithOutShardingTable = false;
-                o.AddShardingTableRoute<ShardingWithModVirtualTableRoute>();
-                o.AddShardingTableRoute<ShardingWithDateTimeVirtualTableRoute>();
-            })
-            .AddConfig(op =>
-            {
-                op.ConfigId = "c1";
-                op.UseShardingQuery((conStr, builder) =>
+ services.AddShardingDbContext<DefaultShardingDbContext>()
+                .UseRouteConfig(o =>
                 {
-                    builder.UseSqlServer(conStr)
-                        .ReplaceService<IMigrationsSqlGenerator, ShardingSqlServerMigrationsSqlGenerator<DefaultShardingTableDbContext>>();
-                        //.ReplaceService<IMigrationsModelDiffer, RemoveForeignKeyMigrationsModelDiffer>();//如果需要移除外键可以添加这个
-                });
-                op.UseShardingTransaction((connection, builder) =>
+                    //...
+                }).UseConfig(o =>
                 {
-                    builder.UseSqlServer(connection);
-                });
-                op.ReplaceTableEnsureManager(sp => new SqlServerTableEnsureManager<DefaultShardingTableDbContext>());
-                op.AddDefaultDataSource("ds0", "Data Source=localhost;Initial Catalog=ShardingCoreDBMigration;Integrated Security=True;");
-                
-            }).EnsureConfig();
-            services.AddLogging();
-            var buildServiceProvider = services.BuildServiceProvider();
-            ShardingContainer.SetServices(buildServiceProvider);
-            ShardingContainer.GetService<IShardingBootstrapper>().Start();
-        }
+                    //注意添加这个替换掉默认的
+                   
+                    o.UseShardingMigrationConfigure(b =>
+                    {
+                        b.ReplaceService<IMigrationsSqlGenerator, ShardingSqlServerMigrationsSqlGenerator>();
+                    });
+                })
+                .AddShardingCore();
 
-        public DefaultShardingTableDbContext CreateDbContext(string[] args)
+
+
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            return ShardingContainer.GetService<DefaultShardingTableDbContext>();
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+
+            //建议补偿表在迁移后面
+            using (var scope = app.ApplicationServices.CreateScope())
+            {
+                var myDbContext = scope.ServiceProvider.GetService<MyDbContext>();
+                //如果没有迁移那么就直接创建表和库
+                myDbContext.Database.EnsureCreated();
+                //如果有迁移使用下面的
+                // myDbContext.Database.Migrate();
+            }
+            app.ApplicationServices.UseAutoTryCompensateTable();
+            app.UseRouting();
+
+            app.UseAuthorization();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
         }
-    }
 ```
-简单说明一下静态构造函数里处理的事情`static DefaultDesignTimeDbContextFactory()`第一步进行了配置，并且对配置完成后进行了启动(初始化),初始化完成后可以通过`ShardingContainer`或者`IServiceProvider`进行`DbContext`的获取.
 
-::: warning 注意
-如果你是一个aspnetcore的项目，那么请务必新建一个控制台程序然后引用efcore层来处理，因为默认`efcore-tools`的执行是在startup中寻找，但是发现有efcore的初始化会直接拿来使用，但是并不会执行`Configure`也就是说`sharding-core`并不会被初始化，就无法被正确处理。
-:::
-
-
-## 生成迁移文件
-
-### 打开nuget命令
-<img src="/sharding-core-doc/nuget.png">
-
-### 设置启动项
-<img src="/sharding-core-doc/setm.png">
 
 ### 迁移初始化命令
 ```shell

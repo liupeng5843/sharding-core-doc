@@ -51,22 +51,6 @@ category: 路由
 ```
 所有在`CreateScope`内部的`SysUserMod`的查询都将只会走指定的表也就是["00","01"],可以针对`Middleware`,`ActionFilter`处进行使用来达到租户的模式
 
-## 路由过滤器
-假设我们对单次查询返回的路由不满意需要配置,比如如果单次查询大于10个结果那么我们只需要返回前5个,这个操作该如何实现呢，
-1. 路由后置过滤器，通过路由的重写
-```csharp
-
-        protected override List<IPhysicTable> AfterPhysicTableFilter(List<IPhysicTable> allPhysicTables, List<IPhysicTable> filterPhysicTables)
-        {
-            if (filterPhysicTables.Count >= 10)
-            {
-                //throw new Exception ....
-                return filterPhysicTables.Take(5).ToList();
-            }
-
-            return filterPhysicTables;
-        }
-```
 通过这个后置过滤我们可以轻轻松松的完成对查询的控制,但是这个是全局的等于说写了那么所有的该对象的路由都要进行这种操作,所以下面就有了第二种方式`断言路由`
 2. 断言路由,所谓的断言路由其实就是提示路由下的一种所以如果我们需要使用断言路由就要进行对`提示路由`的开启
 ```csharp
@@ -122,3 +106,19 @@ category: 路由
 :::
 
 **注意具体的流程可以参考源码[AbstractShardingFilterVirtualTableRoute](https://github.com/xuejmnet/sharding-core/blob/main/src/ShardingCore/Core/VirtualRoutes/TableRoutes/Abstractions/AbstractShardingFilterVirtualTableRoute.cs) 或者[AbstractShardingFilterVirtualDataSourceRoute](https://github.com/xuejmnet/sharding-core/blob/main/src/ShardingCore/Core/VirtualRoutes/DataSourceRoutes/Abstractions/AbstractShardingFilterVirtualDataSourceRoute.cs)**
+
+## 表达式内路由
+除了可以通过using+scope模式外我们还支持表达式内部实现路由`AsRoute`
+```csharp
+    var result = await _defaultTableDbContext.Set<SysUserMod>()
+               .AsRoute(c =>
+               {
+                   c.TryCreateOrAddMustTail<SysUserMod>("01");
+               })
+               .OrderBy(o => o.Age).FirstOrDefaultAsync();
+```
+
+
+::: warning 路由的顺序
+1. 依然需要开启提示路由`EnableHintRoute`
+:::
