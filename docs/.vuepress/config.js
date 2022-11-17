@@ -69,6 +69,7 @@ module.exports = config({
         "important",
         "guide-upgrade-3-4",
         "guide-upgrade-5-6",
+        "guide-upgrade-6-8",
         "old-integration",
         {
           title: "指南",
