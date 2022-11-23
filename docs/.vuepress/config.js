@@ -67,6 +67,7 @@ module.exports = config({
           children: ["architecture","execute-process"],
         },
         "important",
+        "chooseversion",
         "guide-upgrade-3-4",
         "guide-upgrade-5-6",
         "guide-upgrade-6-8",

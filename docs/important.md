@@ -17,13 +17,6 @@ category: 重要
 ## 前言
 `ShardingCore`主旨是增加efcore，针对efcore的分片方面进行增强，并且不对efcore的业务代码进行侵入。不解决数据库层面的问题，编写复杂sql如果在sql层面是慢的那么`sharding-core`也是无能为力的.
 
-## 版本
-`ShardingCore`版本格式为a.b.c.d
-
-- **a**表示`efcore`的版本号
-- **b**表示`ShardingCore`主要版本号
-- **c**表示`ShardingCore`小版本号
-- **d**表示`ShardingCore`修订版本号
 
 ## 常见问题
 因为当前架构师在当前dbcontext作为壳运行,crud会创建真实的dbcontext依托在当前dbcontext上,所以当前dbcontext目前crud都是可以的没有问题,但是如果遇到需要获取track或者其他的一些处理就不应该在当前dbcontext上处理,应该通过内部的DbContextExecutor来获取内部的DbContext来进行处理
