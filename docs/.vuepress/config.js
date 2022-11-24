@@ -66,6 +66,12 @@ module.exports = config({
           prefix: "deveploer/",
           children: ["architecture","execute-process"],
         },
+        {
+          title: "使用疑虑",
+          icon: "creative",
+          prefix: "developer-questions/",
+          children: ["table-not-exists","time-sharding-proplem","abpvnext-other","sequence-query"],
+        },
         "important",
         "chooseversion",
         "guide-upgrade-3-4",
