@@ -64,7 +64,7 @@ c#的gethashcode并不能直接用来取模，因为c#的`GetHashCode`会在程�
 /// like this example
 /// </summary>
 /// <typeparam name="TShardingDbContext"></typeparam>
-public class SqlServerNullableGuidCSharpLanguageShardingComparer<TShardingDbContext>:CSharpLanguageShardingComparer<TShardingDbContext> where TShardingDbContext : DbContext, IShardingDbContext
+public class SqlServerNullableGuidCSharpLanguageShardingComparer:CSharpLanguageShardingComparer 
 {
         public override int Compare(IComparable x, IComparable y, bool asc)
         {
@@ -77,7 +77,7 @@ public class SqlServerNullableGuidCSharpLanguageShardingComparer<TShardingDbCont
 }
 
 //configure
-.ReplaceShardingComparer(sp=>new SqlServerNullableGuidCSharpLanguageShardingComparer<DefaultShardingDbContext>())
+.ReplaceService<IShardingComparer,CSharpLanguageShardingComparer>()
 ```
 **注意:如果您使用的框架不是本框架,那么请确认他的分表聚合是否是内存聚合,如果是内存聚合请确保他会有正确的guid排序在数据库和内存之间**
 
