@@ -131,7 +131,8 @@ module.exports = config({
         "unit-test-coverage",
         "benchmark",
         "query-notes",
-        "tenant"
+        "tenant",
+        "tenant-new"
       ],
     },
 
