@@ -1,7 +1,7 @@
 ---
 icon: launch
-title: 多租户
-category: 多租户
+title: 多租户新
+category: 多租户新
 ---
 
 
