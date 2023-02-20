@@ -6,10 +6,17 @@ category: AbpVNext集成
 
 
 ## Demo
+### 旧版本demo
 [AbpVNextShardingTodoApp](https://github.com/xuejmnet/AbpVNextShardingTodoApp)
+### 新版本的demo
+[ShardingWithFramework](https://github.com/xuejmnet/ShardingWithFramework)
+
 
 ## Blog
-[Integrate With AbpVNext Blog](https://www.cnblogs.com/xuejiaming/p/15449819.html)
+###  旧版本的博客
+[Integrate With AbpVNext Blog V1](https://www.cnblogs.com/xuejiaming/p/15449819.html)
+### 新版本的博客集成
+[Integrate With AbpVNext Blog V2](https://www.cnblogs.com/xuejiaming/p/16450663.html)
 
 
 ## code first
