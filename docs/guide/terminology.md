@@ -9,7 +9,7 @@ category: 使用指南
 ## 全局
 
 ### ShellDbContext壳DbContext
-用户和业务系统交互,单并不是正真执行得DbContext
+用户和业务系统交互,但并不是真正执行的DbContext
 
 ### IShardingRuntimeContext
 `IShardingRuntimeContext`让`DbContext`支持`Sharding`功能的上下文,用于构建出不同的`DbContextOptions`使用不同的`IShardingRuntimeContext`那么就可以让`DbContext`支持不同的`Sharding`,并且一下所有配置都由`IShardingRuntimeContext`获取,而不是依赖注入,`IShardingRuntimeContext`可以由依赖注入获取也可以用户自行保存譬如:静态属性
