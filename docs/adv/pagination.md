@@ -66,7 +66,7 @@ category: 高级
 ```
 我们是将订单表按订单的创建时间进行分页,所以可以得知订单分表后缀满足以上条件
 
-`order_2019`,`order_20120`,`order_2021`满足`2019`<`2020`<`2021`且`min(order_2019.createTime)`<`max(order_2019.createTime)`<`min(order_2020.createTime)`<`max(order_2020.createTime)`<`min(order_2021.createTime)`<`max(order_2021.createTime)`
+`order_2019`,`order_2020`,`order_2021`满足`2019`<`2020`<`2021`且`min(order_2019.createTime)`<`max(order_2019.createTime)`<`min(order_2020.createTime)`<`max(order_2020.createTime)`<`min(order_2021.createTime)`<`max(order_2021.createTime)`
 
 #### PaginationSequence
 表示如果分页的时候按这个字段进行排序才会启用
